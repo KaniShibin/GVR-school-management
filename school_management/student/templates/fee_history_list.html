@@ -1,0 +1,153 @@
+{% extends 'common/home.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Fees History</title>
+    {% block content %}
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 80px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            border-radius: 34px;
+            transition: .4s;
+            font-weight: bolder;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            border-radius: 50%;
+            transition: .4s;
+        }
+
+        input:checked + .slider {
+            background-color: green; /* Green when checked */
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(46px); /* Move the switch to the right */
+        }
+
+        .slider .in {
+            left: 20px; /* Position for "In" text */
+            opacity: 0; /* Hide by default */
+            transition: opacity 0.4s;
+            margin-left: 15px;
+        }
+
+        .slider .out {
+            right: 10px; /* Position for "Out" text */
+            opacity: 1; /* Show by default */
+            transition: opacity 0.4s;
+            margin-left: -15px;
+        }
+
+        input:checked + .slider .in {
+            opacity: 1; /* Show "In" when checked */
+        }
+
+        input:checked + .slider .out {
+            opacity: 0; /* Hide "Out" when checked */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Fees History</h1>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Standard</th>
+                        <th>Division</th>
+                        <th>Amount</th>
+                        <th>Due Date</th>
+                        <th>Payment Date</th>
+                        <th>Profile Pic</th>
+                        {% if user.role != 'librarian' %}<th>Action</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody id="bookTableBody">
+                    {% for fee in fee_history_list %}
+                    <tr>
+                        <td>{{ fee.student.name }}</td>
+                        <td>{{ fee.student.standard }}</td>
+                        <td>{{ fee.student.get_division_display }}</td>
+                        <td>{{ fee.amount }}</td>
+                        <td>{{ fee.due_date|date:"Y-m-d" }}</td>
+                        <td>{{ fee.payment_date|date:"Y-m-d" }}</td>
+                        <td><img src="{{ fee.student.profile_pic.url }}" alt="Profile Pic" width="50"></td>
+                        {% if user.role != 'librarian' %}<td>
+                            <label class="switch">
+                                <input type="checkbox" id="toggle{{ fee.id }}" onchange="updateStatus(this, {{ fee.id }})" {% if fee.status == "paid" %} checked disabled {% endif %}>
+                                <span class="slider">
+                                    <span class="in">Paid</span>
+                                    <span class="out">Due</span>
+                                </span>
+                            </label>
+                        </td>{% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">No fees history found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        function updateStatus(checkbox, recordId) {
+            const status = checkbox.checked ? "In" : "Out";
+            
+            $.ajax({
+                url: '{% url 'student:FeeHistoryListView' %}',
+                method: 'POST',
+                data: {
+                    'status': status,
+                    'record_id': recordId,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    console.log(response.message);
+                    $('tbody#bookTableBody').html(response.table_body); 
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error updating status:', error);
+                }
+            });
+        }
+    </script>
+    {% endblock content %}
+</body>
+</html>

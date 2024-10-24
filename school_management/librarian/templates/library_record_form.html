@@ -1,0 +1,131 @@
+{% extends 'common/home.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Record</title>
+    {% block content %}
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Library Record</h2>
+    <form method="post" enctype="multipart/form-data" id="libraryForm">
+        {% csrf_token %}
+
+        <div class="form-group row">
+            <label for="standard" class="col-sm-2 col-form-label">Standard</label>
+            <div class="col-sm-10">
+                <select name="standard" id="standard" class="form-control">
+                    <option value="" disabled selected>Select Standard</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                    <option value="11">+1</option>
+                    <option value="12">+2</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="divisionContainer" class="form-group row" style="display:none;">
+            <label for="division" class="col-sm-2 col-form-label">Division</label>
+            <div class="col-sm-10">
+                <select name="division" id="division" class="form-control">
+                    <option value="" disabled selected>Select a Division</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="studentContainer" class="form-group row" style="display:none;">
+            <label for="student" class="col-sm-2 col-form-label">Student</label>
+            <div class="col-sm-10">
+                <select name="student" id="student" class="form-control">
+                    <option value="" disabled selected>Select a Student</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="bookContainer" class="form-group row" style="display:none;">
+            <label for="book" class="col-sm-2 col-form-label">Book</label>
+            <div class="col-sm-10">
+                <select name="book" id="book" class="form-control">
+                    <option value="" disabled selected>Select a Book</option>
+                    {% for book in book %}
+                    <option value="{{ book.id }}" {% if book.available == "outofstock" %} style="color: red;" disabled {% endif %}>{{ book.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submit" style="display:none;">Submit</button>
+        <a href="{% url 'librarian:LibraryRecordListView' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+<script>
+    $(document).ready(function(){
+        $("#standard").change(function(){
+            var standardValue = $("#standard").val();
+            $.ajax({
+                url: "{% url 'librarian:get_division' %}",
+                data: {'standard': standardValue},
+                success: function(data) {
+                    if (data.no_divisions) {
+                        $("#divisionContainer").hide();
+                        $("#studentContainer").hide();
+                        $("#bookContainer").hide();
+                        $("#submit").hide();
+                        alert("There are no students available for this standard.");
+                    } else {
+                        $("#division").html(data);
+                        $("#divisionContainer").show();
+                    }
+                }
+            });
+        });
+
+        $("#division").change(function(){
+            var division = $("#division").val();
+            var standard = $("#standard").val();
+        
+            $.ajax({
+                url: "{% url 'librarian:get_student' %}",
+                data: {'standard': standard, 'division': division},
+                success: function(data) {
+                    $("#student").html(data);
+                    $("#studentContainer").show();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        });
+
+        $("#student").change(function() {
+            $("#bookContainer").show();
+        });
+
+        $("#book").change(function(){
+            $("#submit").show();
+        });
+    });
+</script>
+{% endblock content %}
+</body>
+</html>
+
+
+
+
+            

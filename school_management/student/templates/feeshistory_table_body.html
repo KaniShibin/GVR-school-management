@@ -1,0 +1,26 @@
+{% for fee in object_list %}
+<tr>
+    <td>{{ fee.student.name }}</td>
+    <td>{{ fee.student.standard }}</td>
+    <td>{{ fee.student.division }}</td>
+    <td>{{ fee.due_date|date:"Y-m-d" }}</td>
+    <td>{{ fee.payment_date|date:"Y-m-d" }}</td>
+    <td>
+        <img src="{{ fee.student.profile_pic.url }}" alt="Profile Pic" width="50">
+    </td>
+    {% if user.role != 'librarian' %}<td>
+        <label class="switch">
+            <input type="checkbox" id="toggle{{ fee.id }}" onchange="updateStatus(this, {{ fee.id }})" 
+                   {% if fee.status == "paid" %} checked disabled {% endif %}>
+            <span class="slider">
+                <span class="in">Paid</span>
+                <span class="out">Due</span>
+            </span>
+        </label>{% endif %}
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="7" class="text-center">No fees history found.</td>
+</tr>
+{% endfor %}

@@ -1,0 +1,282 @@
+{% extends 'common/home.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Library Records</title>
+    {% block content %}
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 80px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            border-radius: 34px;
+            transition: .4s;
+            font-weight: bolder;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            border-radius: 50%;
+            transition: .4s;
+        }
+
+        input:checked + .slider {
+            background-color: green; /* Green when checked */
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(46px); /* Move the switch to the right */
+        }
+
+        .slider .in {
+            left: 20px; /* Position for "In" text */
+            opacity: 0; /* Hide by default */
+            transition: opacity 0.4s;
+            margin-left: 20px;
+        }
+
+        .slider .out {
+            right: 10px; /* Position for "Out" text */
+            opacity: 1; /* Show by default */
+            transition: opacity 0.4s;
+        }
+
+        input:checked + .slider .in {
+            opacity: 1; /* Show "In" when checked */
+        }
+
+        input:checked + .slider .out {
+            opacity: 0; /* Hide "Out" when checked */
+        }
+
+        #searchbox {
+            flex: 1;  /* Allow the search box to take all available space */
+        }
+
+        #suggestions {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            z-index: 1000;
+            position: absolute;
+            display: none;
+            width: calc(78% - 30px); 
+            margin-top: 0.25rem; 
+        }
+
+        .highlight {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Library Records</h1>
+        {% if user.role != 'office' %}<div class="text-right mb-3">
+            <a href="{% url 'librarian:LibraryRecordCreateView' %}" class="btn btn-primary">Add New Record</a>
+        </div>{% endif %}
+        <div class="mb-3 position-relative d-flex">
+            <input type="search" id="searchbox" name="searchbox" class="form-control mr-0" placeholder="Search for a book title..." aria-label="Search">
+            <button class="btn btn-outline-secondary" id="searchButton" type="button">Search</button>
+        </div>
+        <div id="suggestions" class="list-group" style="display: none;"></div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Student</th>
+                        <th scope="col">Book</th>
+                        <th scope="col">Borrowed Date</th>
+                        <th scope="col">Return Date</th>
+                        {% if user.role != 'office' %}<th scope="col">Stock</th>{% endif %}
+                        {% if user.role != 'office' %}<th scope="col">Action</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody id="bookTableBody">
+                    {% for record in library %}
+                    <tr>
+                        <td>{{ record.student.name }}</td>
+                        <td>{{ record.book.title }}</td>
+                        <td>{{ record.borrowed_date|date:"Y-m-d H:i" }}</td>
+                        <td>{{ record.lend_date|date:"Y-m-d H:i" }}</td>
+                        {% if user.role != 'office' %}<td>
+                            <label class="switch">
+                                <input type="checkbox" id="toggle{{ record.id }}" onchange="updateStatus(this, {{ record.id }}, {{ record.book.id }})" {% if record.book.available == "instock" or record.lend_date %} checked disabled {% endif %}>
+                                <span class="slider">
+                                    <span class="in">In</span>
+                                    <span class="out">Out</span>
+                                </span>
+                            </label>
+                        </td>{% endif %}
+                        {% comment %} {% if user.role == 'office' %}<td>{% if record.book.available == 'instock' %}<i class="fa-solid fa-check fa-2xl" style="color: #16ef06;"></i>{% else %}<i class="fa-solid fa-circle-xmark fa-2xl" style="color: #d90d0d;"></i>{% endif %}</td>{% endif %} {% endcomment %}
+                        {% if user.role != 'office' %}<td>
+                            <form action="{% url 'librarian:LibraryRecordDeleteView' record.pk %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the record of the book {{ record.book.title }} borrowed by {{ record.student.name }}?');">Delete</button>
+                            </form>
+                        </td>{% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.7/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+    <script>
+        function updateStatus(checkbox, recordId, bookId) {
+            const status = checkbox.checked ? "In" : "Out";
+            console.log(`Record ID ${recordId} is now: ${status}`);
+            
+            $.ajax({
+                url: '{% url 'librarian:LibraryRecordListView' %}',  
+                method: 'POST',
+                data: {
+                    'status': status,
+                    'book_id': bookId,
+                    'record_id': recordId,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}' 
+                },
+                success: function(response) {
+                    console.log(response.message);
+                    $('tbody').html(response.table_body); 
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error updating status:', error);
+                }
+            });
+        }
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            let selectedIndex = -1;
+    
+            $('#searchButton').on('click', function () {
+                submitForm();
+            });
+    
+            function submitForm() {
+                const searchQuery = $('#searchbox').val();
+                const csrfToken = '{{ csrf_token }}';
+                $.ajax({
+                    url: '{% url "librarian:LibraryRecordListView" %}',  
+                    method: 'POST',
+                    data: {
+                        'searchbox': searchQuery,
+                        'csrfmiddlewaretoken': csrfToken
+                    },
+                    success: function (data) {
+                        $('#bookTableBody').html(data.html);
+                    }
+                });
+            }
+    
+            // Autocomplete functionality
+            $('#searchbox').on('input', function () {
+                const query = $(this).val();
+                if (query.length > 0) {
+                    $.ajax({
+                        url: '{% url "librarian:LibraryRecordSearchAutocompleteView" %}',
+                        data: { 'term': query },
+                        success: function (data) {
+                            $('#suggestions').empty();
+                            if (data.length > 0) {
+                                data.forEach(function (book) {
+                                    $('#suggestions').append('<a href="#" class="list-group-item list-group-item-action" data-id="' + book.id + '">' + book.title + '</a>');
+                                });
+                                $('#suggestions').show();
+                            } else {
+                                $('#suggestions').hide();
+                            }
+                        }
+                    });
+                } else {
+                    $('#suggestions').hide();
+                }
+            });
+    
+            // Handle suggestion click
+            $(document).on('click', '.list-group-item', function (e) {
+                e.preventDefault();
+                const title = $(this).text();
+                $('#searchbox').val(title);
+                $('#suggestions').hide();
+                submitForm();
+            });
+    
+            // Keyboard navigation for suggestions
+            $('#searchbox').on('keydown', function (e) {
+                const items = $('#suggestions .list-group-item');
+                if (e.key === 'ArrowDown') {
+                    selectedIndex = (selectedIndex + 1) % items.length;  // Cycle through suggestions
+                    updateHighlight(items);
+                    e.preventDefault();  // Prevent cursor from moving
+                } else if (e.key === 'ArrowUp') {
+                    selectedIndex = (selectedIndex - 1 + items.length) % items.length;  // Cycle back through suggestions
+                    updateHighlight(items);
+                    e.preventDefault();  // Prevent cursor from moving
+                } else if (e.key === 'Enter') {
+                    if (selectedIndex >= 0) {
+                        const selectedItem = items.eq(selectedIndex);
+                        const title = selectedItem.text();
+                        $('#searchbox').val(title);
+                        $('#suggestions').hide();
+                        submitForm();
+                    }
+                }
+            });
+    
+            function updateHighlight(items) {
+                items.removeClass('highlight');  // Remove highlight from all items
+                if (selectedIndex >= 0) {
+                    items.eq(selectedIndex).addClass('highlight');  // Highlight the selected item
+                }
+            }
+    
+            // Hide suggestions when clicking outside
+            $(document).click(function (e) {
+                if (!$(e.target).closest('#searchbox').length && !$(e.target).closest('#suggestions').length) {
+                    $('#suggestions').hide();
+                }
+            });
+        });
+    </script>
+    {% endblock content %}
+</body>
+</html>

@@ -1,0 +1,27 @@
+{% for record in library %}
+<tr>
+    <td>{{ record.student.name }}</td>
+    <td>{{ record.book.title }}</td>
+    <td>{{ record.borrowed_date|date:"Y-m-d H:i" }}</td>
+    <td>{{ record.lend_date|date:"Y-m-d H:i" }}</td>
+    <td>
+        <label class="switch">
+            <input type="checkbox" id="toggle{{ record.id }}" onchange="updateStatus(this, {{ record.id }}, {{ record.book.id }})" {% if record.book.available == "instock" or record.lend_date %} checked disabled {% endif %}>
+            <span class="slider">
+                <span class="in">In</span>
+                <span class="out">Out</span>
+            </span>
+        </label>
+    </td>
+    <td>
+        <form action="{% url 'librarian:LibraryRecordDeleteView' record.pk %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the record of the book {{ record.book.title }} borrowed by {{ record.student.name }}?');">Delete</button>
+        </form>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="text-center">No records found.</td>
+</tr>
+{% endfor %}

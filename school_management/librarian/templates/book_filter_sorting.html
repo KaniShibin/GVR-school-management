@@ -1,0 +1,19 @@
+{% for book in books %}
+<tr>
+    <td>{{ book.title }}</td>
+    <td>{{ book.author }}</td>
+    <td>{{ book.get_category_display }}</td>
+    <td>{% if book.available == 'instock' %}<i class="fa-solid fa-check fa-2xl" style="color: #16ef06;"></i>{% else %}<i class="fa-solid fa-circle-xmark fa-2xl" style="color: #d90d0d;"></i>{% endif %}</td>
+    <td>
+        <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editModal{{ book.pk }}">Edit</button>
+        <form action="{% url 'librarian:BookDeleteView' book.pk %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete the book {{ book.title }}?');">Delete</button>
+        </form>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="4" class="text-center">No books found.</td>
+</tr>
+{% endfor %}
